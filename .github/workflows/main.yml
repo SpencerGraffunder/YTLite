@@ -104,6 +104,9 @@ jobs:
       - name: Ensure brew deps
         run: brew list wget >/dev/null 2>&1 || brew install wget; brew list pipx >/dev/null 2>&1 || brew install pipx
 
+      - name: Clean workspace state (self-hosted runners persist the workspace)
+        run: rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+
       - name: Download built debs
         uses: actions/download-artifact@v8
         with:

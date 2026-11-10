@@ -56,6 +56,9 @@ jobs:
       PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
     steps:
+      - name: Clean workspace state (self-hosted runners persist the workspace)
+        run: rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+
       - uses: actions/checkout@v6
         if: ${{ inputs.enable_localization }}
 
