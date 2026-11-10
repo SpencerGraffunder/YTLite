@@ -188,5 +188,8 @@ jobs:
 
       - name: Copy to iCloud Drive IPAs folder
         run: |
-          cp YouTubePlus-*.ipa "$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs/"
-          ls -la "$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs/" | grep YouTubePlus
+          F=$(basename YouTubePlus-*.ipa)
+          D="$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs"
+          cp "$F" "$D/"
+          # exact-path stat only: directory listing of Mobile Documents can hang on stalled bird
+          stat -f "%z bytes  %N" "$D/$F"
