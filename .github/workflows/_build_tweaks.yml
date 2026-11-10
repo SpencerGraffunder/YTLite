@@ -60,7 +60,7 @@ jobs:
         if: ${{ inputs.enable_localization }}
 
       - name: Install Dependencies
-        run: brew install make ldid dpkg
+        run: brew install make ldid dpkg wget pipx
 
       - name: Set PATH environment variable
         run: |
