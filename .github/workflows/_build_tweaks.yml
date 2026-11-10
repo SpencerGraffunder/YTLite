@@ -234,6 +234,9 @@ jobs:
       - name: Build YouMod
         if: ${{ inputs.enable_youmod }}
         run: |
+          # roothide.h stub: sideloaded builds take the mainBundle bundle-lookup branch;
+          # the jbroot() jailbreak path is never hit, so an identity macro is sufficient.
+          printf '#pragma once\n#define jbroot(p) (p)\nstatic inline const char *jbroot_path(const char *p){return p;}\n' > "$THEOS/include/roothide.h"
           cd YouMod && make clean package DEBUG=0 FINALPACKAGE=1
           mv packages/*.deb ../youmod.deb
 
