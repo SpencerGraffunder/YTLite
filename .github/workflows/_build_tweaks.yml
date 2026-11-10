@@ -51,7 +51,9 @@ on:
 jobs:
   build-tweaks:
     name: Build Tweaks
-    runs-on: macos-latest
+    runs-on: [self-hosted, nuclear-mac]
+    env:
+      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
     steps:
       - uses: actions/checkout@v6
