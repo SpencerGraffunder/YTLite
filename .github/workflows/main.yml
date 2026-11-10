@@ -142,14 +142,44 @@ jobs:
           done
           cyan -i youtube.ipa -o YouTubePlus_${{ github.event.inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ github.event.inputs.display_name }}" -b ${{ github.event.inputs.bundle_id }}
 
+      - name: Rename asset for hub-site convention
+        run: |
+          STAMP="$(date +%-y.%-m.%-d)-${{ github.run_number }}"
+          NEW="YouTubePlus-${STAMP}.ipa"
+          mv "YouTubePlus_${{ github.event.inputs.tweak_version }}.ipa" "$NEW"
+          echo "IPA_NAME=$NEW" >> "$GITHUB_ENV"
+
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ytp-${{ github.run_number }}
-          name: YouTubePlus v${{ github.event.inputs.tweak_version }} (${{ github.run_number }})
-          files: YouTubePlus_${{ github.event.inputs.tweak_version }}.ipa
-          draft: true
+          name: YouTube Plus ${{ github.event.inputs.tweak_version }} (${{ github.run_number }})
+          files: ${{ env.IPA_NAME }}
+          draft: false
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtubeplus-ipa
+          path: ${{ env.IPA_NAME }}
 
       - name: Output Release URL
         run: |
           echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
+
+  mirror:
+    name: Mirror .ipa to iCloud Drive
+    runs-on: [self-hosted, nuclear-mac]
+    needs: package
+    continue-on-error: true
+
+    steps:
+      - name: Download built IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: youtubeplus-ipa
+
+      - name: Copy to iCloud Drive IPAs folder
+        run: |
+          cp YouTubePlus-*.ipa "$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs/"
+          ls -la "$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs/" | grep YouTubePlus
