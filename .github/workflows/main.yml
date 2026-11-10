@@ -45,6 +45,18 @@ on:
         required: true
         default: false
 
+      include_ytplus:
+        description: "Include YouTube Plus core tweak (subscription-gated since 5.2)"
+        type: boolean
+        required: true
+        default: true
+
+      enable_youmod:
+        description: "YouMod: free ad removal, SponsorBlock, speed controls"
+        type: boolean
+        required: true
+        default: false
+
       ipa_url:
         description: "URL to the decrypted IPA file"
         default: ""
@@ -90,6 +102,8 @@ jobs:
       enable_ytabc: ${{ inputs.enable_ytabc }}
       enable_demc: ${{ inputs.enable_demc }}
       enable_localization: ${{ inputs.enable_localization }}
+      include_ytplus: ${{ inputs.include_ytplus }}
+      enable_youmod: ${{ inputs.enable_youmod }}
       tweak_version: ${{ inputs.tweak_version }}
 
   package:
@@ -116,7 +130,7 @@ jobs:
       - name: Hide sensitive inputs
         uses: levibostian/action-hide-sensitive-inputs@v1
         with:
-          exclude_inputs: bundle_id,display_name,enable_demc,enable_ryd,enable_ytabc,enable_youpip,enable_yq,enable_ytuhd,enable_localization,info_note,tweak_version
+          exclude_inputs: bundle_id,display_name,enable_demc,enable_ryd,enable_ytabc,enable_youmod,enable_youpip,enable_yq,enable_ytuhd,enable_localization,include_ytplus,info_note,tweak_version
 
       - name: Download and validate IPA
         run: |
@@ -143,24 +157,27 @@ jobs:
 
       - name: Inject tweaks into IPA
         run: |
-          tweaks="ytplus.deb OpenYoutubeSafariExtension.appex"
+          tweaks=""
+          [ -f ytplus.deb ] && tweaks="ytplus.deb"
           for f in *.deb; do
-            [ -f "$f" ] && tweaks="$tweaks $f"
+            [ "$f" = "ytplus.deb" ] && continue
+            tweaks="$tweaks $f"
           done
-          cyan -i youtube.ipa -o YouTubePlus_${{ github.event.inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ github.event.inputs.display_name }}" -b ${{ github.event.inputs.bundle_id }}
+          tweaks="$tweaks OpenYoutubeSafariExtension.appex"
+          cyan -i youtube.ipa -o YouTubePlus_injected.ipa -uwef $tweaks -n "${{ github.event.inputs.display_name }}" -b ${{ github.event.inputs.bundle_id }}
 
       - name: Rename asset for hub-site convention
         run: |
           STAMP="$(date +%-y.%-m.%-d)-${{ github.run_number }}"
           NEW="YouTubePlus-${STAMP}.ipa"
-          mv "YouTubePlus_${{ github.event.inputs.tweak_version }}.ipa" "$NEW"
+          mv YouTubePlus_injected.ipa "$NEW"
           echo "IPA_NAME=$NEW" >> "$GITHUB_ENV"
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ytp-${{ github.run_number }}
-          name: YouTube Plus ${{ github.event.inputs.tweak_version }} (${{ github.run_number }})
+          name: ${{ github.event.inputs.include_ytplus == 'false' && format('YouTube Plus (YouMod, no subscription) ({0})', github.run_number) || format('YouTube Plus {0} ({1})', github.event.inputs.tweak_version, github.run_number) }}
           files: ${{ env.IPA_NAME }}
           draft: false
 
