@@ -99,7 +99,7 @@ jobs:
     permissions:
       contents: write
     env:
-      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      PATH: /Users/spencer/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     steps:
       - name: Ensure brew deps
         run: brew list wget >/dev/null 2>&1 || brew install wget; brew list pipx >/dev/null 2>&1 || brew install pipx
