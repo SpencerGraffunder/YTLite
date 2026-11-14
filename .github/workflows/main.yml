@@ -181,6 +181,23 @@ jobs:
           files: ${{ env.IPA_NAME }}
           draft: false
 
+      - name: Prune superseded releases (newest-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Newest-only policy (2026-11-14, Spec standing rule): hub + iCloud
+          # keep ONLY the current build. The digits-only ytp pattern never
+          # touches beta or other tag shapes.
+          TAG="ytp-${{ github.run_number }}"
+          OLD_TAGS=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+                      --jq '.[].tag_name' \
+                    | grep -E '^ytp-[0-9]+$' \
+                    | grep -v -x "$TAG" || true)
+          for OLD in $OLD_TAGS; do
+            echo "Pruning superseded release $OLD"
+            gh release delete "$OLD" --yes --cleanup-tag
+          done
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -208,5 +225,9 @@ jobs:
           F=$(basename YouTubePlus-*.ipa)
           D="$HOME/Library/Mobile Documents/com~apple~CloudDocs/IPAs"
           cp "$F" "$D/"
+          # Newest-only policy (2026-11-14, Spec standing rule): drop
+          # superseded YouTubePlus builds from the shared collection folder
+          # — YouTubePlus prefix only.
+          find "$D" -maxdepth 1 -type f -name 'YouTubePlus*.ipa' ! -name "$F" -delete
           # exact-path stat only: directory listing of Mobile Documents can hang on stalled bird
           stat -f "%z bytes  %N" "$D/$F"
