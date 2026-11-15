@@ -195,7 +195,12 @@ jobs:
                     | grep -v -x "$TAG" || true)
           for OLD in $OLD_TAGS; do
             echo "Pruning superseded release $OLD"
-            gh release delete "$OLD" --yes --cleanup-tag
+            # API-only delete: gh release delete --cleanup-tag shells out to
+            # local git, but this job has no checkout (self-hosted, checkout
+            # skipped) -> 'not a git repository'. Delete via REST instead.
+            REL_ID=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$OLD" --jq .id)
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$REL_ID"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$OLD" || true
           done
 
       - name: Upload artifact
