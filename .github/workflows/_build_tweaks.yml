@@ -229,7 +229,9 @@ jobs:
 
       - name: Clone YouMod
         if: ${{ inputs.enable_youmod }}
-        run: git clone --quiet --depth=1 https://github.com/Tonwalter888/YouMod.git
+        # spec-hub branch of our fork: canonical startup-tab fix (see branch commits).
+        # Upstream: Tonwalter888/YouMod — rebase spec-hub onto upstream/main periodically.
+        run: git clone --quiet --depth=1 -b spec-hub https://github.com/SpencerGraffunder/YouMod.git
 
       - name: Build YouMod
         if: ${{ inputs.enable_youmod }}
