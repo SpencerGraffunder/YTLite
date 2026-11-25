@@ -1,0 +1,61 @@
+name: Sync upstream (weekly rebase)
+
+on:
+  schedule:
+    # Sunday ~10:00 Eastern (staggered after the LiveContainerUp sync)
+    - cron: '0 15 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM_URL: https://github.com/dayanch96/YTLite.git
+      UPSTREAM_BRANCH: main
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Rebase main onto upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          git config user.name "YTLite sync"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream "$UPSTREAM_BRANCH" --quiet
+          UP=$(git rev-parse "upstream/$UPSTREAM_BRANCH")
+          MB=$(git merge-base origin/main "$UP" || true)
+          if [ "$MB" = "$UP" ]; then
+            echo "upstream/$UPSTREAM_BRANCH is already merged into main - nothing to do"
+            exit 0
+          fi
+          echo "upstream has $(git rev-list --count "$MB".."$UP") new commit(s); rebasing fork commits onto $UP"
+          git checkout -B main "origin/main"
+          if git rebase "$UP"; then
+            git push --force-with-lease origin main
+            echo "::notice::main rebased onto dayanch96/YTLite - run 'Create YouTube Plus app' when you want the new hub build"
+          else
+            CONFLICT=$(git diff --name-only --diff-filter=U | tr '\n' ' ')
+            git rebase --abort
+            git branch -f sync/upstream "$UP"
+            git push --force origin sync/upstream
+            if [ -z "$(gh pr list --repo "$GITHUB_REPOSITORY" --head sync/upstream --state open --json number --jq '.[0].number // ""')" ]; then
+              BODY=$(printf 'The weekly sync-upstream job could not rebase main onto dayanch96/YTLite %s (%s).\n\nLikely conflict area: %s\n\nOptions:\n1. **Merge this PR** - quick unblock; adds a merge commit instead of a clean rebase (the next weekly run continues from there).\n2. **Rebase by hand**: `git fetch upstream && git rebase upstream/%s main`, resolve, then `git push --force-with-lease`.\n\nAfter either path, dispatch "Create YouTube Plus app" for a hub build with the fresh upstream code.' "$UPSTREAM_BRANCH" "$UP" "${CONFLICT:-unknown}" "$UPSTREAM_BRANCH")
+              gh pr create --repo "$GITHUB_REPOSITORY" --base main --head sync/upstream \
+                --title "Weekly upstream sync: rebase conflict - manual resolution needed" \
+                --body "$BODY"
+            else
+              echo "sync PR already open; branch updated"
+            fi
+            echo "::warning::rebase conflicted - opened/updated the sync/upstream PR"
+          fi
